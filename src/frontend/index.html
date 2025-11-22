@@ -88,15 +88,42 @@
   <div class="container">
     <h1>Загрузите CSV-файл</h1>
 
-    <div class="drop-area" id="dropArea">
-      <p>Перетащите файл сюда или кликните, чтобы выбрать</p>
-      <input type="file" id="fileInput" accept=".csv" />
-    </div>
+<div class="drop-area" id="dropArea">
+  <p>Перетащите <strong>все файлы</strong> сюда или кликните, чтобы выбрать</p>
+  <p style="font-size: 12px; color: #999;">Ожидаются: temperatures.csv, supplies.csv, weather.csv</p>
+  <input type="file" id="fileInput" accept=".csv" multiple /> <!-- Добавлено: multiple -->
+</div>
+
 
     <button id="uploadBtn" disabled>Загрузить в базу</button>
 
     <div id="message"></div>
   </div>
+
+<div class="container" style="margin-top: 30px;">
+  <h1>Просмотр данных</h1>
+
+  <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+    <select id="tableSelect">
+      <option value="temperatures">Температура штабелей</option>
+      <option value="supplies">Поставки угля</option>
+      <option value="weather">Погодные данные</option>
+    </select>
+    <button id="loadDataBtn">Загрузить</button>
+    <button id="exportCsvBtn">Экспорт в CSV</button>
+  </div>
+
+  <div id="dataMessage"></div>
+  <div style="overflow-x: auto;">
+    <table id="dataTable" border="1" style="width: 100%; border-collapse: collapse; display: none;">
+      <thead>
+        <tr></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
 
   <script>
     const dropArea = document.getElementById('dropArea');
@@ -111,7 +138,13 @@
 
     // Выбор файла через input
     fileInput.addEventListener('change', (e) => {
-      selectedFile = e.target.files[0];
+      const files = Array.from(e.target.files);
+      if (files.length > 0) {
+      dropArea.innerHTML = `<p>Выбрано файлов: ${files.length}</p>`;
+      uploadBtn.disabled = false;
+      messageDiv.innerHTML = '';
+      } 
+
       if (selectedFile) {
         dropArea.innerHTML = `<p>Выбран: ${selectedFile.name}</p>`;
         uploadBtn.disabled = false;
@@ -158,40 +191,134 @@
     });
 
     // Загрузка на сервер
-    uploadBtn.addEventListener('click', async () => {
-      if (!selectedFile) return;
+uploadBtn.addEventListener('click', async () => {
+    const files = Array.from(fileInput.files);
+    if (files.length === 0) return;
 
-      const formData = new FormData();
-      formData.append('file', selectedFile);
+    const formData = new FormData();
+    files.forEach(file => {
+        formData.append('files', file);
+    });
 
-      messageDiv.innerHTML = `<p>Загрузка...</p>`;
-      uploadBtn.disabled = true;
+    messageDiv.innerHTML = `<p>Загрузка ${files.length} файл(ов)...</p>`;
+    uploadBtn.disabled = true;
 
-      try {
-        const response = await fetch('http://127.0.0.1:8000/upload-csv/', {
-          method: 'POST',
-          body: formData,
+    try {
+        const response = await fetch('http://127.0.0.1:8000/upload-multiple-csv/', {
+            method: 'POST',
+            body: formData,
         });
 
         const result = await response.json();
 
-        if (response.ok) {
-          messageDiv.innerHTML = `
-            <div class="message success">
-              ✅ Успешно! ${result.rows} строк загружено в таблицу '${result.table_name || 'uploaded_data'}'
+        if (response.ok || response.status === 206) {
+            let msg = `<div class="message ${result.warning ? 'success' : 'success'}">
+                ✅ ${result.message || result.warning}
             </div>`;
+            if (result.missing) {
+                msg += `<div style="margin-top: 10px; color: #e67e22;">
+                    ⚠️ Не хватает: ${result.missing.join(', ')}
+                </div>`;
+            }
+            messageDiv.innerHTML = msg;
         } else {
-          throw new Error(result.detail || 'Неизвестная ошибка');
+            throw new Error(result.detail);
         }
-      } catch (error) {
+    } catch (error) {
         messageDiv.innerHTML = `
           <div class="message error">
             ❌ Ошибка: ${error.message}
           </div>`;
-      } finally {
+    } finally {
         uploadBtn.disabled = false;
-      }
+    }
+});
+
+const tableSelect = document.getElementById('tableSelect');
+const loadDataBtn = document.getElementById('loadDataBtn');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
+const dataMessage = document.getElementById('dataMessage');
+const dataTable = document.getElementById('dataTable');
+const tableHead = dataTable.querySelector('thead tr');
+const tableBody = dataTable.querySelector('tbody');
+
+let currentData = [];
+
+loadDataBtn.addEventListener('click', async () => {
+  const table = tableSelect.value;
+  dataMessage.innerHTML = 'Загрузка...';
+  tableBody.innerHTML = '';
+  dataTable.style.display = 'none';
+
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/get_data?table=${table}`);
+    const result = await response.json();
+
+    if (result.count === 0) {
+      dataMessage.innerHTML = 'Нет данных';
+      return;
+    }
+
+    currentData = result.data;
+    const columns = Object.keys(result.data[0]);
+
+    tableHead.innerHTML = '';
+    columns.forEach(col => {
+      const th = document.createElement('th');
+      th.textContent = col;
+      th.style.padding = '8px';
+      th.style.backgroundColor = '#f0f0f0';
+      tableHead.appendChild(th);
     });
-  </script>
+
+    result.data.forEach(row => {
+      const tr = document.createElement('tr');
+      columns.forEach(col => {
+        const td = document.createElement('td');
+        td.textContent = row[col] !== null ? row[col] : '';
+        td.style.padding = '6px 8px';
+        td.style.border = '1px solid #ddd';
+        tr.appendChild(td);
+      });
+      tableBody.appendChild(tr);
+    });
+
+    dataTable.style.display = 'table';
+    dataMessage.innerHTML = `Загружено: ${result.count} строк`;
+  } catch (error) {
+    dataMessage.innerHTML = `Ошибка: ${error.message}`;
+  }
+});
+
+// Экспорт в CSV
+exportCsvBtn.addEventListener('click', () => {
+  if (currentData.length === 0) {
+    alert('Нет данных для экспорта');
+    return;
+  }
+
+  const table = tableSelect.value;
+  const columns = Object.keys(currentData[0]);
+  const csvContent = [
+    columns.join(','), // заголовки
+    ...currentData.map(row =>
+      columns.map(col => {
+        let value = row[col];
+        if (value === null || value === undefined) value = '';
+        value = String(value).replace(/"/g, '""');
+        return `"${value}"`;
+      }).join(',')
+    )
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${table}_export_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+});
+</script>
 </body>
 </html>
