@@ -204,7 +204,7 @@ uploadBtn.addEventListener('click', async () => {
     uploadBtn.disabled = true;
 
     try {
-        const response = await fetch('http://127.0.0.1:8000/upload-multiple-csv/', {
+        const response = await fetch('/upload-multiple-csv/', {
             method: 'POST',
             body: formData,
         });
@@ -251,7 +251,7 @@ loadDataBtn.addEventListener('click', async () => {
   dataTable.style.display = 'none';
 
   try {
-    const response = await fetch(`http://127.0.0.1:8000/get_data?table=${table}`);
+    const response = await fetch(`/get_data?table=${table}`);
     const result = await response.json();
 
     if (result.count === 0) {

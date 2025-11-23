@@ -14,5 +14,22 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi_app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://dev:chakaton@db:5432/coal_fire_db
+    depends_on:
+      db:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./src:/app/src
+
+
 volumes:
   postgres_data:

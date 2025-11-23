@@ -4,9 +4,6 @@ from sqlalchemy import create_engine
 
 Base = declarative_base()
 
-DATABASE_URL = "postgresql://dev:chakaton@localhost:5432/coal_fire_db"
-engine = create_engine(DATABASE_URL)
-
 # Модели
 class Temperature(Base):
     __tablename__ = "temperatures_data"
@@ -43,12 +40,4 @@ class Weather(Base):
     visibility = Column("visibility", Float)
     weather_code = Column("weather_code", Integer)
 
-# Создаём таблицы
-def create_tables():
-    Base.metadata.create_all(bind=engine)
 
-
-DATABASE_URL = "postgresql://dev:chakaton@localhost:5432/coal_fire_db"
-engine = create_engine(DATABASE_URL)
-def create_tables():
-    Base.metadata.create_all(bind=engine)

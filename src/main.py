@@ -7,20 +7,38 @@ import pandas as pd
 import numpy as np 
 import io
 import os
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
+from database import Base 
+import time
 
-from database import create_tables,engine
+
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://dev:chakaton@db:5432/coal_fire_db")
+
+engine = create_engine(DATABASE_URL)
+
+while True:
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        break
+    except OperationalError as e:
+        time.sleep(2)
+    except Exception as e:
+        time.sleep(2)
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-create_tables()
 
 EXPECTED_COLUMNS = {
     "temperatures": [
