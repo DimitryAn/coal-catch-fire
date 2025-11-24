@@ -66,7 +66,7 @@ TABLE_NAMES = {
     "weather": "weather_data",
     "fires": "fires_data"
 }
-
+fires_file = ''
 @app.get("/ping")
 async def ping():
     return {"status": "ok"}
@@ -183,7 +183,7 @@ async def get_data(
 async def upload_fires_csv(file: UploadFile = File(...)):
     if not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Ожидается CSV-файл")
-
+    fires_file = file
     try:
         content = await file.read()
         content_str = content.decode("utf-8") 
@@ -226,6 +226,17 @@ async def predict_endpoint():
     """
     try:
         result = get_predictions()
+        return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка прогноза: {str(e)}")
+    
+@app.get("/metrics/")
+async def metrics():
+    """
+    Получить метрики
+    """
+    try:
+        result = update_model_with_new_fires(fires_file)['metrics']
         return JSONResponse(content=result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка прогноза: {str(e)}")
