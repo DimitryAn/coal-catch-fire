@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -143,8 +144,25 @@
     .hidden {
       display: none;
     }
+
+    .metrics-container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 40%;
+      text-align: center;
+      margin-left: 5%;
+    }
+
+    .output-container {
+      display: flex;
+      margin-top: 30px;
+    }
   </style>
 </head>
+
 <body>
 
   <!-- Основная загрузка всех файлов -->
@@ -178,7 +196,9 @@
       <div id="dataMessage"></div>
       <div style="overflow-x: auto;">
         <table id="dataTable" border="1" style="width: 100%; border-collapse: collapse; display: none;">
-          <thead><tr></tr></thead>
+          <thead>
+            <tr></tr>
+          </thead>
           <tbody></tbody>
         </table>
       </div>
@@ -191,7 +211,9 @@
       <div id="predMessage"></div>
       <div style="overflow-x: auto; margin-top: 10px;">
         <table id="predTable" border="1" style="width: 100%; border-collapse: collapse; display: none;">
-          <thead><tr></tr></thead>
+          <thead>
+            <tr></tr>
+          </thead>
           <tbody></tbody>
         </table>
       </div>
@@ -209,6 +231,34 @@
       </div>
       <button id="firesUploadBtn" disabled>Загрузить в базу</button>
       <div id="firesMessage"></div>
+    </div>
+  </div>
+  <div class="output-container">
+    <div class="metrics-container">
+      <h1>Метрики</h1>
+      <button id="loadMetricsBtn">Загрузить таблицу</button>
+      <div id="MetricsMessage"></div>
+      <div style="overflow-x: auto; margin-top: 10px;">
+        <table id="MetricsTable" border="1" style="width: 100%; border-collapse: collapse; display: none;">
+          <thead>
+            <tr></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="table--container" style="margin-top: 0px;">
+      <h1>Таблица истинных возгораний</h1>
+      <button id="loadTrueBtn">Загрузить таблицу</button>
+      <div id="TrueMessage"></div>
+      <div style="overflow-x: auto; margin-top: 10px;">
+        <table id="TrueTable" border="1" style="width: 100%; border-collapse: collapse; display: none;">
+          <thead>
+            <tr></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -288,84 +338,84 @@
     });
 
     // === 2. Загрузка fires.csv ===
-const firesDropArea = document.getElementById('firesDropArea');
-const firesFileInput = document.getElementById('firesFileInput');
-const firesUploadBtn = document.getElementById('firesUploadBtn');
-const firesMessage = document.getElementById('firesMessage');
+    const firesDropArea = document.getElementById('firesDropArea');
+    const firesFileInput = document.getElementById('firesFileInput');
+    const firesUploadBtn = document.getElementById('firesUploadBtn');
+    const firesMessage = document.getElementById('firesMessage');
 
-// Клик
-firesDropArea.addEventListener('click', () => firesFileInput.click());
+    // Клик
+    firesDropArea.addEventListener('click', () => firesFileInput.click());
 
-// Выбор файла
-firesFileInput.addEventListener('change', () => {
-  if (firesFileInput.files.length > 0) {
-    firesDropArea.innerHTML = `<p>Выбран: ${firesFileInput.files[0].name}</p>`;
-    firesUploadBtn.disabled = false;
-    firesMessage.innerHTML = '';
-  }
-});
-
-// Перетаскивание
-['dragenter', 'dragover'].forEach(event => {
-  firesDropArea.addEventListener(event, () => {
-    firesDropArea.classList.add('highlight');
-  });
-});
-
-['dragleave', 'drop'].forEach(event => {
-  firesDropArea.addEventListener(event, () => {
-    firesDropArea.classList.remove('highlight');
-  });
-});
-
-// Обработка drop
-firesDropArea.addEventListener('drop', e => {
-  e.preventDefault();
-  const dt = e.dataTransfer;
-  if (dt.files.length > 0) {
-    firesFileInput.files = dt.files;
-    firesDropArea.innerHTML = `<p>Выбран: ${dt.files[0].name}</p>`;
-    firesUploadBtn.disabled = false;
-    firesMessage.innerHTML = '';
-  }
-});
-
-// Отправка
-firesUploadBtn.addEventListener('click', async () => {
-  const file = firesFileInput.files[0];
-  if (!file) return;
-
-  const formData = new FormData();
-  formData.append('file', file);  // ← внимание: file (без s)
-
-  firesMessage.innerHTML = 'Загрузка fires.csv...';
-  firesUploadBtn.disabled = true;
-
-  try {
-    const response = await fetch('/upload-fires-csv/', {  // ← новый endpoint
-      method: 'POST',
-      body: formData,
+    // Выбор файла
+    firesFileInput.addEventListener('change', () => {
+      if (firesFileInput.files.length > 0) {
+        firesDropArea.innerHTML = `<p>Выбран: ${firesFileInput.files[0].name}</p>`;
+        firesUploadBtn.disabled = false;
+        firesMessage.innerHTML = '';
+      }
     });
 
-    const result = await response.json();
+    // Перетаскивание
+    ['dragenter', 'dragover'].forEach(event => {
+      firesDropArea.addEventListener(event, () => {
+        firesDropArea.classList.add('highlight');
+      });
+    });
 
-    if (response.ok) {
-      firesMessage.innerHTML = `
+    ['dragleave', 'drop'].forEach(event => {
+      firesDropArea.addEventListener(event, () => {
+        firesDropArea.classList.remove('highlight');
+      });
+    });
+
+    // Обработка drop
+    firesDropArea.addEventListener('drop', e => {
+      e.preventDefault();
+      const dt = e.dataTransfer;
+      if (dt.files.length > 0) {
+        firesFileInput.files = dt.files;
+        firesDropArea.innerHTML = `<p>Выбран: ${dt.files[0].name}</p>`;
+        firesUploadBtn.disabled = false;
+        firesMessage.innerHTML = '';
+      }
+    });
+
+    // Отправка
+    firesUploadBtn.addEventListener('click', async () => {
+      const file = firesFileInput.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);  // ← внимание: file (без s)
+
+      firesMessage.innerHTML = 'Загрузка fires.csv...';
+      firesUploadBtn.disabled = true;
+
+      try {
+        const response = await fetch('/upload-fires-csv/', {  // ← новый endpoint
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          firesMessage.innerHTML = `
         <div class="message success">
           ✅ ${result.message} (${result.rows} строк)
         </div>`;
-    } else {
-      throw new Error(result.detail);
-    }
-  } catch (error) {
-    firesMessage.innerHTML = `
+        } else {
+          throw new Error(result.detail);
+        }
+      } catch (error) {
+        firesMessage.innerHTML = `
       <div class="message error">
         ❌ Ошибка: ${error.message}
       </div>`;
-  } finally {
-    firesUploadBtn.disabled = false;
-  }
-});
+      } finally {
+        firesUploadBtn.disabled = false;
+      }
+    });
 
     // === 3. Просмотр данных ===
     const tableSelect = document.getElementById('tableSelect');
@@ -453,73 +503,142 @@ firesUploadBtn.addEventListener('click', async () => {
     });
 
     // === 5. Прогнозные данные ===
-const loadPredBtn = document.getElementById('loadPredBtn');
-const predMessage = document.getElementById('predMessage');
-const predTable = document.getElementById('predTable');
-const predHead = predTable.querySelector('thead tr');
-const predBody = predTable.querySelector('tbody');
+    const loadPredBtn = document.getElementById('loadPredBtn');
+    const predMessage = document.getElementById('predMessage');
+    const predTable = document.getElementById('predTable');
+    const predHead = predTable.querySelector('thead tr');
+    const predBody = predTable.querySelector('tbody');
 
-loadPredBtn.addEventListener('click', async () => {
-  predMessage.innerHTML = 'Получение прогноза...';
-  predBody.innerHTML = '';
-  predTable.style.display = 'none';
+    loadPredBtn.addEventListener('click', async () => {
+      predMessage.innerHTML = 'Получение прогноза...';
+      predBody.innerHTML = '';
+      predTable.style.display = 'none';
 
-  try {
-    const response = await fetch('/predict/');
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Неизвестная ошибка');
-    }
-    const result = await response.json();
+      try {
+        const response = await fetch('/predict/');
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || 'Неизвестная ошибка');
+        }
+        const result = await response.json();
 
-    if (!result.predictions || result.predictions.length === 0) {
-      predMessage.innerHTML = 'Нет прогнозируемых рисков.';
-      return;
-    }
+        if (!result.predictions || result.predictions.length === 0) {
+          predMessage.innerHTML = 'Нет прогнозируемых рисков.';
+          return;
+        }
 
-    const columns = Object.keys(result.predictions[0]);
+        const columns = Object.keys(result.predictions[0]);
 
-    // Заголовки
-    predHead.innerHTML = '';
-    columns.forEach(col => {
-      const th = document.createElement('th');
-      th.textContent = col;
-      th.style.padding = '8px';
-      th.style.backgroundColor = '#f0f0f0';
-      th.style.border = '1px solid #ddd';
-      predHead.appendChild(th);
+        // Заголовки
+        predHead.innerHTML = '';
+        columns.forEach(col => {
+          const th = document.createElement('th');
+          th.textContent = col;
+          th.style.padding = '8px';
+          th.style.backgroundColor = '#f0f0f0';
+          th.style.border = '1px solid #ddd';
+          predHead.appendChild(th);
+        });
+
+        // Строки
+        result.predictions.forEach(row => {
+          const tr = document.createElement('tr');
+          columns.forEach(col => {
+            const td = document.createElement('td');
+            let value = row[col];
+            if (value === null || value === undefined) value = '';
+            // Форматирование вероятности
+            if (col === 'risk_probability') {
+              value = (parseFloat(value) * 100).toFixed(2) + '%';
+            }
+            // Форматирование дат
+            if (col === 'predicted_date') {
+              const date = new Date(value);
+              value = date.toLocaleDateString('ru-RU');
+            }
+            td.textContent = value;
+            td.style.padding = '6px 8px';
+            td.style.border = '1px solid #ddd';
+            tr.appendChild(td);
+          });
+          predBody.appendChild(tr);
+        });
+
+        predTable.style.display = 'table';
+        predMessage.innerHTML = `Прогноз готов: ${result.predictions.length} записей`;
+      } catch (error) {
+        predMessage.innerHTML = `❌ Ошибка: ${error.message}`;
+      }
     });
 
-    // Строки
-    result.predictions.forEach(row => {
-      const tr = document.createElement('tr');
-      columns.forEach(col => {
-        const td = document.createElement('td');
-        let value = row[col];
-        if (value === null || value === undefined) value = '';
-        // Форматирование вероятности
-        if (col === 'risk_probability') {
-          value = (parseFloat(value) * 100).toFixed(2) + '%';
-        }
-        // Форматирование дат
-        if (col === 'predicted_date') {
-          const date = new Date(value);
-          value = date.toLocaleDateString('ru-RU');
-        }
-        td.textContent = value;
-        td.style.padding = '6px 8px';
-        td.style.border = '1px solid #ddd';
-        tr.appendChild(td);
-      });
-      predBody.appendChild(tr);
-    });
+    const loadMetricsBtn = document.getElementById('loadMetricsBtn');
+    const MetricsMessage = document.getElementById('MetricsMessage');
+    const MetricsTable = document.getElementById('MetricsTable');
+    const MetricsHead = predTable.querySelector('thead tr');
+    const MetricsBody = predTable.querySelector('tbody');
 
-    predTable.style.display = 'table';
-    predMessage.innerHTML = `Прогноз готов: ${result.predictions.length} записей`;
-  } catch (error) {
-    predMessage.innerHTML = `❌ Ошибка: ${error.message}`;
-  }
-});
+    loadMetricsBtn.addEventListener('click', async () => {
+      MetricsMessage.innerHTML = 'Получение прогноза...';
+      MetricsBody.innerHTML = '';
+      MetricsTable.style.display = 'none';
+
+      try {
+        const response = await fetch('/predict/');
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || 'Неизвестная ошибка');
+        }
+        const result = await response.json();
+
+        if (!result.predictions || result.predictions.length === 0) {
+          MetricsMessage.innerHTML = 'Нет прогнозируемых рисков.';
+          return;
+        }
+
+        const columns = Object.keys(result.predictions[0]);
+
+        // Заголовки
+        MetricsHead.innerHTML = '';
+        columns.forEach(col => {
+          const th = document.createElement('th');
+          th.textContent = col;
+          th.style.padding = '8px';
+          th.style.backgroundColor = '#f0f0f0';
+          th.style.border = '1px solid #ddd';
+          MetricsHead.appendChild(th);
+        });
+
+        // Строки
+        result.predictions.forEach(row => {
+          const tr = document.createElement('tr');
+          columns.forEach(col => {
+            const td = document.createElement('td');
+            let value = row[col];
+            if (value === null || value === undefined) value = '';
+            // Форматирование вероятности
+            if (col === 'risk_probability') {
+              value = (parseFloat(value) * 100).toFixed(2) + '%';
+            }
+            // Форматирование дат
+            if (col === 'predicted_date') {
+              const date = new Date(value);
+              value = date.toLocaleDateString('ru-RU');
+            }
+            td.textContent = value;
+            td.style.padding = '6px 8px';
+            td.style.border = '1px solid #ddd';
+            tr.appendChild(td);
+          });
+          MetricsBody.appendChild(tr);
+        });
+
+        MetricsTable.style.display = 'table';
+        MetricsMessage.innerHTML = `Прогноз готов: ${result.predictions.length} записей`;
+      } catch (error) {
+        MetricsMessage.innerHTML = `❌ Ошибка: ${error.message}`;
+      }
+    });
   </script>
 </body>
+
 </html>
