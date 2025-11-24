@@ -453,55 +453,73 @@ firesUploadBtn.addEventListener('click', async () => {
     });
 
     // === 5. Прогнозные данные ===
-    const loadPredBtn = document.getElementById('loadPredBtn');
-    const predMessage = document.getElementById('predMessage');
-    const predTable = document.getElementById('predTable');
-    const predHead = predTable.querySelector('thead tr');
-    const predBody = predTable.querySelector('tbody');
+const loadPredBtn = document.getElementById('loadPredBtn');
+const predMessage = document.getElementById('predMessage');
+const predTable = document.getElementById('predTable');
+const predHead = predTable.querySelector('thead tr');
+const predBody = predTable.querySelector('tbody');
 
-    loadPredBtn.addEventListener('click', async () => {
-      predMessage.innerHTML = 'Загрузка...';
-      predBody.innerHTML = '';
-      predTable.style.display = 'none';
+loadPredBtn.addEventListener('click', async () => {
+  predMessage.innerHTML = 'Получение прогноза...';
+  predBody.innerHTML = '';
+  predTable.style.display = 'none';
 
-      try {
-        const response = await fetch('/get_data?table=pred_table');
-        const result = await response.json();
+  try {
+    const response = await fetch('/predict/');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Неизвестная ошибка');
+    }
+    const result = await response.json();
 
-        if (result.count === 0) {
-          predMessage.innerHTML = 'Нет данных';
-          return;
-        }
+    if (!result.predictions || result.predictions.length === 0) {
+      predMessage.innerHTML = 'Нет прогнозируемых рисков.';
+      return;
+    }
 
-        const columns = Object.keys(result.data[0]);
+    const columns = Object.keys(result.predictions[0]);
 
-        predHead.innerHTML = '';
-        columns.forEach(col => {
-          const th = document.createElement('th');
-          th.textContent = col;
-          th.style.padding = '8px';
-          th.style.backgroundColor = '#f0f0f0';
-          predHead.appendChild(th);
-        });
-
-        result.data.forEach(row => {
-          const tr = document.createElement('tr');
-          columns.forEach(col => {
-            const td = document.createElement('td');
-            td.textContent = row[col] !== null ? row[col] : '';
-            td.style.padding = '6px 8px';
-            td.style.border = '1px solid #ddd';
-            tr.appendChild(td);
-          });
-          predBody.appendChild(tr);
-        });
-
-        predTable.style.display = 'table';
-        predMessage.innerHTML = '';
-      } catch (error) {
-        predMessage.innerHTML = `Ошибка: ${error.message}`;
-      }
+    // Заголовки
+    predHead.innerHTML = '';
+    columns.forEach(col => {
+      const th = document.createElement('th');
+      th.textContent = col;
+      th.style.padding = '8px';
+      th.style.backgroundColor = '#f0f0f0';
+      th.style.border = '1px solid #ddd';
+      predHead.appendChild(th);
     });
+
+    // Строки
+    result.predictions.forEach(row => {
+      const tr = document.createElement('tr');
+      columns.forEach(col => {
+        const td = document.createElement('td');
+        let value = row[col];
+        if (value === null || value === undefined) value = '';
+        // Форматирование вероятности
+        if (col === 'risk_probability') {
+          value = (parseFloat(value) * 100).toFixed(2) + '%';
+        }
+        // Форматирование дат
+        if (col === 'predicted_date') {
+          const date = new Date(value);
+          value = date.toLocaleDateString('ru-RU');
+        }
+        td.textContent = value;
+        td.style.padding = '6px 8px';
+        td.style.border = '1px solid #ddd';
+        tr.appendChild(td);
+      });
+      predBody.appendChild(tr);
+    });
+
+    predTable.style.display = 'table';
+    predMessage.innerHTML = `Прогноз готов: ${result.predictions.length} записей`;
+  } catch (error) {
+    predMessage.innerHTML = `❌ Ошибка: ${error.message}`;
+  }
+});
   </script>
 </body>
 </html>
