@@ -14,7 +14,7 @@ docker compose up --build
 ```bash
 Ctrl + C
 ```
-5) Завершение работы всех контейнеров
+6) Завершение работы всех контейнеров
 ```bash
 docker compose down
 ```
