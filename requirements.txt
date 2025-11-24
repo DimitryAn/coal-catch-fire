@@ -1,6 +1,10 @@
 fastapi
 uvicorn>=0.18.0
 pandas
+numpy
 sqlalchemy
 psycopg2-binary
 python-multipart
+joblib
+scikit-learn
+pydantic

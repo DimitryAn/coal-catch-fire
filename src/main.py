@@ -11,6 +11,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from database import Base 
 from prediction import get_predictions, update_model_with_new_fires
+from io import StringIO 
 import time
 
 
@@ -180,13 +181,14 @@ async def get_data(
         raise HTTPException(status_code=500, detail=f"Ошибка чтения из БД: {str(e)}")
 @app.post("/upload-fires-csv/")
 async def upload_fires_csv(file: UploadFile = File(...)):
-
     if not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Ожидается CSV-файл")
 
     try:
         content = await file.read()
-        df = pd.read_csv(io.StringIO(content.decode("utf-8")))
+        content_str = content.decode("utf-8") 
+
+        df = pd.read_csv(StringIO(content_str))
         df = df.where(pd.notnull(df), None)
 
         # Валидация столбцов
@@ -195,23 +197,27 @@ async def upload_fires_csv(file: UploadFile = File(...)):
         if missing_cols:
             raise ValueError(f"Отсутствуют столбцы: {missing_cols}")
 
-        # Загрузка
+        # Загрузка в БД
         table_name = TABLE_NAMES["fires"]
         df.to_sql(table_name, engine, if_exists='append', index=False)
 
+        # Дообучение модели
+        #update_result = update_model_with_new_fires(content_str)
+
         return JSONResponse(
             content={
-                "message": "Файл fires.csv успешно загружен",
+                "message": "Файл fires.csv успешно загружен и модель дообучена",
                 "rows": len(df),
-                "table": table_name
+                "table": table_name,
+                "model_update": ""
             }
         )
 
     except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Ошибка при обработке fires.csv: {str(e)}"
-        )
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"Ошибка при обработке fires.csv: {str(e)}")
+        
         
 @app.get("/predict/")
 async def predict_endpoint():
@@ -223,23 +229,15 @@ async def predict_endpoint():
         return JSONResponse(content=result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка прогноза: {str(e)}")
-
-@app.post("/update-model/")
-async def update_model_endpoint(file: UploadFile = File(...)):
-    """
-    Дообучение модели на новых данных из fires.csv
-    """
-    try:
-        content = await file.read()
-        content_str = content.decode("utf-8")
-        result = update_model_with_new_fires(content_str)
-        return JSONResponse(content=result)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Ошибка дообучения: {str(e)}")
-
+    
 # Раздача фронтенда
 app.mount("/static", StaticFiles(directory="src/frontend"), name="static")
 
+
 @app.get("/")
 def read_root():
-    return FileResponse("src/frontend/index.html")
+    file_path = "src/frontend/index.html"
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    else:
+        return {"error": "index.html not found", "path": os.path.abspath(file_path)}
