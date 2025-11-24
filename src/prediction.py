@@ -24,6 +24,8 @@ MODEL_DIR = Path("src/models")
 MODELS_DICT_PATH = MODEL_DIR / "models_dict.pkl"
 BASE_HISTORICAL_PATH = MODEL_DIR / "base_historical.pkl"
 
+PREDS_DF = []
+
 # === Загрузка моделей ===
 try:
     models_dict = joblib.load(MODELS_DICT_PATH)
@@ -62,6 +64,7 @@ def get_predictions() -> Dict:
 
 
         preds_list = preds_df.to_dict(orient="records")
+        PREDS_DF = preds_df
         for row in preds_list:
             row["target_date"] = row["target_date"].strftime("%Y-%m-%d")
         return {"predictions": preds_list}
@@ -70,7 +73,6 @@ def get_predictions() -> Dict:
         import traceback
         traceback.print_exc()
         raise RuntimeError(f"Ошибка прогноза: {str(e)}")
-
 
 def update_model_with_new_fires(fires_csv_content: str):
     """
@@ -100,9 +102,8 @@ def update_model_with_new_fires(fires_csv_content: str):
         models_dict = models_dict_updated
         base_historical = combined_base
 
-        preds_df = pd.DataFrame(get_predictions()["predictions"])
         metrics = evaluate_predictions_with_new_fires(
-            preds_df=preds_df,
+            preds_df=PREDS_DF,
             fires_new_raw=fires_df
         )
 
