@@ -10,6 +10,7 @@ import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from database import Base 
+from prediction import get_predictions, update_model_with_new_fires
 import time
 
 
@@ -211,6 +212,30 @@ async def upload_fires_csv(file: UploadFile = File(...)):
             status_code=400,
             detail=f"Ошибка при обработке fires.csv: {str(e)}"
         )
+        
+@app.get("/predict/")
+async def predict_endpoint():
+    """
+    Получить прогноз риска самовозгорания
+    """
+    try:
+        result = get_predictions()
+        return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка прогноза: {str(e)}")
+
+@app.post("/update-model/")
+async def update_model_endpoint(file: UploadFile = File(...)):
+    """
+    Дообучение модели на новых данных из fires.csv
+    """
+    try:
+        content = await file.read()
+        content_str = content.decode("utf-8")
+        result = update_model_with_new_fires(content_str)
+        return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Ошибка дообучения: {str(e)}")
 
 # Раздача фронтенда
 app.mount("/static", StaticFiles(directory="src/frontend"), name="static")
