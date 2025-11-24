@@ -42,22 +42,27 @@ app.add_middleware(
 
 EXPECTED_COLUMNS = {
     "temperatures": [
-        "Штабель", "Марка", "Максимальная температура", "Пикет", "Дата акта", "Смена"
+       "Склад", "Штабель", "Марка", "Максимальная температура", "Пикет", "Дата акта", "Смена"
     ],
     "supplies": [
-        "ВыгрузкаНаСклад", "Наим ЕТСНГ", "Штабель", "ПогрузкаНаСудно",
-        "На склад тн", "На судно тн", "Склад"
+        "ВыгрузкаНаСклад", "Наим. ЕТСНГ", "Штабель", "ПогрузкаНаСудно",
+        "На склад, тн", "На судно, тн", "Склад"
     ],
     "weather": [
-        "t", "p", "humidity", "precipitation", "wind_dir", "v_avg", "v_max",
+        "date", "t", "p", "humidity", "precipitation", "wind_dir", "v_avg", "v_max",
         "cloudcover", "visibility", "weather_code"
+    ],
+    "fires": [
+        "Дата составления", "Груз", "Вес по акту, тн", "Склад",
+        "Дата начала", "Дата оконч.", "Нач.форм.штабеля", "Штабель"
     ]
 }
 
 TABLE_NAMES = {
     "temperatures": "temperatures_data",
     "supplies": "supplies_data",
-    "weather": "weather_data"
+    "weather": "weather_data",
+    "fires": "fires_data"
 }
 
 @app.get("/ping")
@@ -139,14 +144,15 @@ async def upload_multiple_csv(files: list[UploadFile] = File(...)):
 
 @app.get("/get_data")
 async def get_data(
-    table: str = Query(..., description="Название таблицы: temperatures, supplies, weather"),
+    table: str = Query(..., description="Название таблицы: temperatures, supplies, weather fires"),
     limit: int = Query(100, le=1000) 
 ):
 
     table_mapping = {
         "temperatures": "temperatures_data",
         "supplies": "supplies_data",
-        "weather": "weather_data"
+        "weather": "weather_data",
+        "fires": "fires_data"
     }
 
     if table not in table_mapping:
@@ -171,6 +177,40 @@ async def get_data(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка чтения из БД: {str(e)}")
+@app.post("/upload-fires-csv/")
+async def upload_fires_csv(file: UploadFile = File(...)):
+
+    if not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Ожидается CSV-файл")
+
+    try:
+        content = await file.read()
+        df = pd.read_csv(io.StringIO(content.decode("utf-8")))
+        df = df.where(pd.notnull(df), None)
+
+        # Валидация столбцов
+        expected_cols = EXPECTED_COLUMNS["fires"]
+        missing_cols = [col for col in expected_cols if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f"Отсутствуют столбцы: {missing_cols}")
+
+        # Загрузка
+        table_name = TABLE_NAMES["fires"]
+        df.to_sql(table_name, engine, if_exists='append', index=False)
+
+        return JSONResponse(
+            content={
+                "message": "Файл fires.csv успешно загружен",
+                "rows": len(df),
+                "table": table_name
+            }
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ошибка при обработке fires.csv: {str(e)}"
+        )
 
 # Раздача фронтенда
 app.mount("/static", StaticFiles(directory="src/frontend"), name="static")
